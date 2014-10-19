@@ -1,6 +1,7 @@
 import CollisionDetectionMode.CollisionDetectionMode
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
+import play.api.libs.functional.syntax._
 
 object PlaySerializationTest extends App {
 
@@ -30,25 +31,41 @@ object PlaySerializationTest extends App {
     case _ => JsError(Seq(JsPath() -> Seq(ValidationError("Expected json array"))))
   }
 
+  implicit def defaultReadInt(): Reads[Int] = Reads[Int] {
+    case x: JsNumber => {
+      JsSuccess(x.value.toInt)
+    }
+    case x: JsUndefined => {
+      JsSuccess(0)
+    }
+    case _ => JsError(Seq(JsPath()-> Seq(ValidationError("Expected json array"))))
+  }
+
+  case class TimeOption(startTime: Option[Int], endTime: Option[Int], collisionMode: Option[Map[CollisionDetectionMode, Int]])
   case class Time(startTime: Int = 10, endTime: Int, collisionMode: Map[CollisionDetectionMode, Int])
+  object Time{
+    def apply(timeOption: TimeOption): Time = {
+      Time(timeOption.startTime.getOrElse(10), timeOption.endTime.getOrElse(0), timeOption.collisionMode.get)
+    }
+  }
 
-  implicit val timeWrite = Json.writes[Time]
-  val timey = Time(10, 100, List((CollisionDetectionMode.Continuous, 12), (CollisionDetectionMode.ContinuousDynamic, 17)).toMap)
-  println(Json.toJson(timey))
+//  implicit val timeWrite = Json.writes[Time]
+//  val timey = Time(10, 100, List((CollisionDetectionMode.Continuous, 12), (CollisionDetectionMode.ContinuousDynamic, 17)).toMap)
+//  println(Json.toJson(timey))
 
-//  implicit val timeReads: Reads[Time] = (
+//  implicit val timeRead: Reads[Time] = (
 //    (__ \ 'startTime).readNullable[Int] and
-//    (__ \ 'endTime).readNullable[Int] and
-//    (__ \ 'collisionMode).read[List[(CollisionDetectionMode, Int)]]
+//      (__ \ 'endTime).readNullable[Int] and
+//      (__ \ 'collisionMode).read[Map[CollisionDetectionMode,Int]]
 //    )((startTime, endTime, collisionMode) => new Time(
-//    startTime = if (startTime.isEmpty) 10 else startTime.get,
-//    endTime = if (endTime.isEmpty) 0 else endTime.get,
-//    collisionMode = collisionMode.toMap
+//    startTime = if (startTime.isEmpty) default.asInstanceOf[Int] else startTime.get,
+//    endTime = endTime.get,
+//    collisionMode = collisionMode
 //  ))
-  implicit val timeReads = Json.reads[Time]
+  implicit val timeReads = Json.reads[TimeOption]
 
-  private val timeJsonWrong = """{"startTime":10, "endTime": 100, "collisionMode":[["Continuous",12],["ContinuousDynamic",17]]}"""
+  private val timeJsonWrong = """{"startTime": 12, "endTime": 100, "collisionMode":[["Continuous",12],["ContinuousDynamic",17]]}"""
   println(timeJsonWrong)
-  private val wrongTime = Json.fromJson[Time](Json.parse(timeJsonWrong)).get
+  private val wrongTime: Time = Time(Json.fromJson[TimeOption](Json.parse(timeJsonWrong)).get)
   println(wrongTime)
 }
