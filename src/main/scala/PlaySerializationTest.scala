@@ -2,6 +2,9 @@ import CollisionDetectionMode.CollisionDetectionMode
 import play.api.data.validation.ValidationError
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
+import org.json4s._
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization.{read, write}
 
 object PlaySerializationTest extends App {
 
@@ -68,4 +71,29 @@ object PlaySerializationTest extends App {
   println(timeJsonWrong)
   private val wrongTime: Time = Time(Json.fromJson[TimeOption](Json.parse(timeJsonWrong)).get)
   println(wrongTime)
+  implicit val formats = Serialization.formats(NoTypeHints)
+
+  case class Defaults(x: Int = 10, y: List[(Int,String)])
+
+  val defa = Defaults(2, Map(1 -> "One", 2 -> "two").toList)
+  println(write(defa))
+  println(read[Defaults](write(defa)))
 }
+/*
+object UuidSerializer extends CustomSerializer[Map[Int, Any]](format =>
+  (
+    {
+      case JArray(s) => s.map(x => (x.as[JArray].arr(0).extract[Int], x.as[JArray].arr(1).extract[String])).toMap
+      case JNull => null
+    },
+    {
+      case x: Map[Int, _] => {
+        val toList: List[(Int, _)] = x.toList
+        JArray(toList.map(x => {
+//          format.customSerializers.find).isDefinedAt(x._2)
+          JArray(List(JInt(x._1), JString("Shite")))
+        }))
+      }
+    }
+    )
+)*/
